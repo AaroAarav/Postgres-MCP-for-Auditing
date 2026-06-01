@@ -1,4 +1,5 @@
 import json
+import time
 import logging
 from typing import Any, Dict, Optional
 from src.db.connection import get_db_connection
@@ -58,3 +59,29 @@ async def log_audit_event(
     except Exception as e:
         # We log to stderr if auditing fails, but we don't crash the application
         logger.error(f"CRITICAL: Failed to write to audit log: {e}")
+
+async def log_llm_usage(
+    prompt_tokens: int, 
+    completion_tokens: int, 
+    cost_usd: float, 
+    task_description: str
+) -> str:
+    """Logs the LLM API token usage to the audit table."""
+    start_time = time.time()
+    try:
+        # Wrap the dictionary in json.dumps() so Postgres accepts it into the JSONB column
+        parameters = json.dumps({
+            "prompt_tokens": prompt_tokens,
+            "completion_tokens": completion_tokens,
+            "total_tokens": prompt_tokens + completion_tokens,
+            "estimated_cost_usd": cost_usd,
+            "task": task_description
+        })
+        
+        duration = (time.time() - start_time) * 1000
+        await log_audit_event("log_llm_usage", parameters, "SUCCESS", duration)
+        
+        return f"✅ Logged {prompt_tokens + completion_tokens} tokens to audit log."
+        
+    except Exception as e:
+        return f"❌ Failed to log usage: {str(e)}"

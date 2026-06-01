@@ -54,7 +54,7 @@ async def run_dba_agent(user_prompt: str):
             
             total_in_tokens = 0
             total_out_tokens = 0
-            max_turns = 5  # Prevent infinite loops if the model gets stuck
+            max_turns = 15  # Prevent infinite loops if the model gets stuck
             
             for turn in range(max_turns):
                 print(f"🧠 Thinking (Turn {turn + 1})...")

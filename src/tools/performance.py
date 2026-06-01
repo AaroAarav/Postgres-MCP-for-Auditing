@@ -1,8 +1,28 @@
-import os
+import logging
+from psycopg.rows import dict_row
+from src.db.connection import get_db_connection
+from src.tools.formatters import format_results
 
-new_code = '''
+logger = logging.getLogger(__name__)
 # Global snapshot for query regression
 _pg_stat_statements_snapshot = {}
+
+async def slow_queries(limit: int = 10) -> str:
+    """Returns the slowest queries from pg_stat_statements. Use this to identify performance bottlenecks."""
+    query = """
+        SELECT substring(query, 1, 100) AS query_preview, calls, 
+               round(total_exec_time::numeric, 2) AS total_time_ms,
+               round(mean_exec_time::numeric, 2) AS mean_time_ms, rows
+        FROM pg_stat_statements ORDER BY mean_exec_time DESC LIMIT %s;
+    """
+    try:
+        async with get_db_connection() as conn:
+            async with conn.cursor(row_factory=dict_row) as cur:
+                await cur.execute(query, (limit,))
+                results = await cur.fetchall()
+                return format_results(results, "No slow queries found. (Ensure pg_stat_statements is enabled)")
+    except Exception as e:
+        return f"Database error: {e}"
 
 async def high_variance_queries(limit: int = 10) -> str:
     """Finds queries that are usually fast but occasionally very slow (high variance)."""
@@ -106,55 +126,6 @@ async def query_regression_report(limit: int = 10) -> str:
     except Exception as e:
         return f"Database error: {e}"
 
-async def explain_query(sql_query: str) -> str:
-    """Runs EXPLAIN on a query you provide and returns the execution plan."""
-    try:
-        async with get_db_connection() as conn:
-            await conn.set_read_only(True)
-            async with conn.cursor(row_factory=dict_row) as cur:
-                explain_sql = f"EXPLAIN (FORMAT JSON) {sql_query}"
-                await cur.execute(explain_sql)
-                results = await cur.fetchone()
-                if results and 'QUERY PLAN' in results:
-                    import json
-                    return json.dumps(results['QUERY PLAN'], indent=2)
-                return "Failed to generate query plan."
-    except Exception as e:
-        return f"Database error while explaining query: {e}"
-
-async def explain_summary(explain_json_str: str) -> str:
-    """Takes raw EXPLAIN JSON output and returns a plain-language description of the bottleneck."""
-    try:
-        import json
-        plan_data = json.loads(explain_json_str)
-        if isinstance(plan_data, list):
-            plan_data = plan_data[0]
-        
-        plan = plan_data.get('Plan', {})
-        
-        def find_bottlenecks(node):
-            bottlenecks = []
-            if node.get('Node Type') == 'Seq Scan':
-                bottlenecks.append(f"Sequential Scan on {node.get('Relation Name', 'unknown')} (cost: {node.get('Total Cost', 0)})")
-            elif 'Join' in node.get('Node Type', ''):
-                bottlenecks.append(f"{node.get('Node Type')} (cost: {node.get('Total Cost', 0)})")
-            
-            if 'Plans' in node:
-                for subplan in node['Plans']:
-                    bottlenecks.extend(find_bottlenecks(subplan))
-            return bottlenecks
-            
-        bottlenecks = find_bottlenecks(plan)
-        if not bottlenecks:
-            return "Plan seems straightforward with no obvious Seq Scans or major joins."
-        
-        summary = "Potential bottlenecks found in plan:\\n"
-        for b in set(bottlenecks):
-            summary += f"- {b}\\n"
-        return summary
-    except Exception as e:
-        return f"Error summarizing plan: {e}"
-
 async def latency_percentiles() -> str:
     """Returns minimum, average, maximum, and standard deviation of execution times (as a substitute for percentiles)."""
     query = """
@@ -175,8 +146,3 @@ async def latency_percentiles() -> str:
                 return format_results(results, "No latency statistics available.")
     except Exception as e:
         return f"Database error: {e}"
-'''
-
-with open('src/tools/diagnostics.py', 'a', encoding='utf-8') as f:
-    f.write('\\n' + new_code)
-print('Appended to diagnostics.py')

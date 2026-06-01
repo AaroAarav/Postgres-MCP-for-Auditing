@@ -29,3 +29,7 @@
 - name: test_get_parents
   description: Just a test query to get parents.
   sql: SELECT id, name FROM test_parent LIMIT 5
+- name: weekly_health_review
+  description: Automated weekly health review for database performance.
+  sql: SELECT pg_stat_activity.pid, pg_stat_activity.usename, pg_stat_activity.query
+    FROM pg_stat_activity WHERE pg_stat_activity.state = 'active' LIMIT 10;
