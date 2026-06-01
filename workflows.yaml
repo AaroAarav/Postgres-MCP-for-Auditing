@@ -1,0 +1,18 @@
+- name: weekly_health_review
+  description: "Full weekly DBA health check — bloat, indexes, slow queries, cache"
+  steps:
+    - tool: slow_queries
+      params: { limit: 5 }
+    - tool: missing_index_candidates
+    - tool: unused_indexes
+    - query: top_bloated_tables
+      params: { limit: 10 }
+    - tool: cache_hit_rate
+
+- name: slow_query_triage
+  description: "Quick incident triage: active sessions, locks, and top slow queries"
+  steps:
+    - tool: active_sessions
+    - tool: blocking_lock_tree
+    - tool: slow_queries
+      params: { limit: 5 }

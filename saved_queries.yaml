@@ -1,0 +1,31 @@
+- name: top_bloated_tables
+  description: Tables with highest dead tuple ratio, ordered by urgency
+  params:
+  - name: limit
+    type: int
+    default: 20
+  - name: min_pct
+    type: float
+    default: 0.05
+  sql: 'SELECT relname AS table_name, n_dead_tup, n_live_tup,
+
+    ROUND(n_dead_tup::numeric / NULLIF(n_live_tup + n_dead_tup,0), 3) AS dead_ratio,
+
+    last_autovacuum, last_autoanalyze
+
+    FROM pg_stat_user_tables
+
+    WHERE n_dead_tup::numeric / NULLIF(n_live_tup + n_dead_tup,0) > :min_pct
+
+    ORDER BY dead_ratio DESC LIMIT :limit
+
+    '
+- name: slow_callers
+  description: "Top 10 queries by total time \u2014 the costliest workload by absolute\
+    \ impact"
+  sql: "SELECT substring(query, 1, 100) AS query_preview, calls, \n       round(total_exec_time::numeric,\
+    \ 2) AS total_exec_time_ms, \n       round(mean_exec_time::numeric, 2) AS mean_exec_time_ms,\
+    \ rows\nFROM pg_stat_statements ORDER BY total_exec_time DESC LIMIT 10\n"
+- name: test_get_parents
+  description: Just a test query to get parents.
+  sql: SELECT id, name FROM test_parent LIMIT 5

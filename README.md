@@ -13,6 +13,13 @@ This server exposes a powerful suite of database administration and auditing too
 - **cache_hit_rate**: Analyze database cache efficiency.
 - **blocking_lock_tree**: Discover complex lock dependencies and blockages.
 - **table_bloat_report**: Identify dead tuples and space wastage in tables.
+- **high_variance_queries**: Find queries that are usually fast but occasionally very slow.
+- **queries_by_io**: List queries causing the most disk reads.
+- **temp_spill_queries**: Identify queries writing to temporary files.
+- **query_regression_report**: Automatically compare performance against a baseline snapshot.
+- **explain_query**: Securely run EXPLAIN on provided SQL.
+- **explain_summary**: Distill complex EXPLAIN JSON into plain-language bullet points.
+- **latency_percentiles**: View standard deviation alongside min/mean/max latency.
 - **log_llm_usage**: Internal metric tracking for auditing usage.
 
 ### 📈 Index Analysis
@@ -20,6 +27,17 @@ This server exposes a powerful suite of database administration and auditing too
 - **unused_indexes**: Identify indexes that consume space but are rarely used.
 - **duplicate_indexes**: Detect redundant indexes that can be safely removed.
 - **suggest_indexes**: Get intelligent index suggestions based on query patterns and EXPLAIN plans.
+- **bloated_indexes**: Estimate dead space within indexes.
+- **unindexed_foreign_keys**: Compare foreign key constraints with existing indexes to flag cascading delete risks.
+- **index_usage_stats**: Get detailed read/hit statistics per index.
+- **index_health_summary**: Provides a rolled-up schema score summarizing index health.
+
+### 🧠 Dynamic Analysis & Workflows
+- **get_database_schema**: Allows the LLM to learn the database structure (tables, columns, types, constraints).
+- **execute_dynamic_query**: Allows the LLM to run custom, generated SQL (safely restricted to read-only `SELECT` statements).
+- **save_query**: The LLM can permanently cache successful queries to `saved_queries.yaml` for zero-shot future use.
+- **list_saved_queries / run_saved_query**: Re-use parameterized queries to drastically cut down on token costs and hallucinations.
+- **list_saved_workflows / run_workflow**: Chain multiple diagnostics tools into a single, automated server-side report (e.g., `weekly_health_review`).
 
 ### 🛠️ Maintenance & Safety
 - **vacuum_table**: Execute VACUUM safely to reclaim storage and update visibility maps.

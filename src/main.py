@@ -14,12 +14,18 @@ import os
 from src.config.settings import settings
 
 # Import isolated tool modules
+
+from src.tools.schema import get_database_schema
 from src.tools.diagnostics import (
     ping_database, slow_queries, active_sessions, 
-    cache_hit_rate, blocking_lock_tree, table_bloat_report,log_llm_usage
+    cache_hit_rate, blocking_lock_tree, table_bloat_report,log_llm_usage, high_variance_queries, queries_by_io, temp_spill_queries, query_regression_report, explain_query, explain_summary, latency_percentiles
+)
+
+from src.tools.workflows import (
+    list_saved_queries, run_saved_query, list_saved_workflows, run_workflow, execute_dynamic_query, save_query
 )
 from src.tools.indexes import (
-    missing_index_candidates, unused_indexes, duplicate_indexes, suggest_indexes
+    missing_index_candidates, unused_indexes, duplicate_indexes, suggest_indexes, bloated_indexes, unindexed_foreign_keys, index_usage_stats, index_health_summary
 )
 from src.tools.maintenance import (
     vacuum_table, analyze_table, reindex_index
@@ -97,12 +103,38 @@ mcp.tool()(cache_hit_rate)
 mcp.tool()(blocking_lock_tree)
 mcp.tool()(table_bloat_report)
 mcp.tool()(log_llm_usage)
+mcp.tool()(high_variance_queries)
+mcp.tool()(queries_by_io)
+mcp.tool()(temp_spill_queries)
+mcp.tool()(query_regression_report)
+mcp.tool()(explain_query)
+mcp.tool()(explain_summary)
+mcp.tool()(latency_percentiles)
+
 
 # Register Index Tools
 mcp.tool()(missing_index_candidates)
 mcp.tool()(unused_indexes)
 mcp.tool()(duplicate_indexes)
 mcp.tool()(suggest_indexes)
+mcp.tool()(bloated_indexes)
+mcp.tool()(unindexed_foreign_keys)
+mcp.tool()(index_usage_stats)
+mcp.tool()(index_health_summary)
+
+
+
+# Register Schema Tools
+mcp.tool()(get_database_schema)
+
+# Register Workflow Tools
+mcp.tool()(list_saved_queries)
+mcp.tool()(run_saved_query)
+mcp.tool()(list_saved_workflows)
+mcp.tool()(run_workflow)
+mcp.tool()(execute_dynamic_query)
+mcp.tool()(save_query)
+
 
 # Register Maintenance Tools
 mcp.tool()(vacuum_table)
