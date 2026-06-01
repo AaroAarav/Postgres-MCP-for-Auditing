@@ -47,9 +47,13 @@ async def run_dba_agent(user_prompt: str):
                 })
 
             # 2. Maintain conversational state
-            messages = [{'role': 'user', 'content': user_prompt}]
-            
-            # Use explicit IPv4 loopback to avoid Windows networking issues
+            messages = [
+                {
+                    'role': 'system', 
+                    'content': 'You are an autonomous PostgreSQL Database Administrator. You have access to tools to diagnose and manage the database. You MUST use these tools to answer the user\'s request. After you have gathered enough information from the tools, you MUST ALWAYS provide a final, comprehensive response in natural language explaining your findings.'
+                },
+                {'role': 'user', 'content': user_prompt}
+            ]
             client = ollama.AsyncClient(host="http://127.0.0.1:11434")
             
             total_in_tokens = 0
@@ -78,19 +82,20 @@ async def run_dba_agent(user_prompt: str):
                 # Fallback: Parse Markdown JSON if 3B parameter model outputs text instead of structured tools
                 if not tool_calls and response.message.content:
                     # This new regex looks for ANY valid JSON object {} in the text, with or without markdown
-                    json_match = re.search(r'(\{[\s\S]*"name"\s*:\s*"[^"]+"[\s\S]*\})', response.message.content)
+                    json_match = re.search(r'(\{[\s\S]*"(?:name|function)"\s*:\s*"[^"]+"[\s\S]*\})', response.message.content)
                     if json_match:
                         try:
                             parsed_tool = json.loads(json_match.group(1))
-                            if parsed_tool.get("name") in available_tool_names:
+                            tool_name_extracted = parsed_tool.get("name") or parsed_tool.get("function")
+                            if tool_name_extracted in available_tool_names:
                                 # Standardize into a pseudo-tool call structure
                                 class PseudoToolCall:
-                                    def __init__(self, data):
+                                    def __init__(self, name, args):
                                         self.function = type('Sub', (object,), {
-                                            "name": data["name"],
-                                            "arguments": data.get("arguments", {})
+                                            "name": name,
+                                            "arguments": args
                                         })()
-                                tool_calls = [PseudoToolCall(parsed_tool)]
+                                tool_calls = [PseudoToolCall(tool_name_extracted, parsed_tool.get("arguments", {}))]
                         except Exception:
                             pass
 
