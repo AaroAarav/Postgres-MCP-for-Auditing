@@ -1,4 +1,5 @@
 import logging
+from src.tools.history import log_query
 from psycopg.rows import dict_row
 from src.db.connection import get_db_connection
 from src.tools.formatters import format_results
@@ -58,13 +59,14 @@ async def duplicate_indexes() -> str:
         return f"Database error: {e}"
 
 async def suggest_indexes(sql_query: str) -> str:
-    """Analyzes a specific SQL query by running EXPLAIN. Returns execution plan to recommend indexes."""
+    """Analyzes a specific SQL query by running EXPLAIN. Returns execution plan to recommend indexes. You must provide an actual, valid SQL query string that exists in the database. Do not pass placeholders or fake queries like 'SELECT * FROM users'."""
     try:
         async with get_db_connection() as conn:
             await conn.set_read_only(True)
             async with conn.cursor(row_factory=dict_row) as cur:
                 explain_sql = f"EXPLAIN (FORMAT JSON) {sql_query}"
                 await cur.execute(explain_sql)
+                log_query("suggest_indexes", sql_query)
                 results = await cur.fetchone()
                 if results and 'QUERY PLAN' in results:
                     import json

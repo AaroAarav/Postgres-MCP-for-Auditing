@@ -1,4 +1,5 @@
 import logging
+from src.tools.history import log_query
 import psycopg
 from psycopg.rows import dict_row
 from src.db.connection import get_db_connection
@@ -258,13 +259,14 @@ async def query_regression_report(limit: int = 10) -> str:
         return f"Database error: {e}"
 
 async def explain_query(sql_query: str) -> str:
-    """Runs EXPLAIN on a query you provide and returns the execution plan."""
+    """Runs EXPLAIN on a query you provide and returns the execution plan. You must provide an actual, valid SQL query string (e.g. 'SELECT * FROM users'). Do not pass placeholders like '<your_sql_query_here>'."""
     try:
         async with get_db_connection() as conn:
             await conn.set_read_only(True)
             async with conn.cursor(row_factory=dict_row) as cur:
                 explain_sql = f"EXPLAIN (FORMAT JSON) {sql_query}"
                 await cur.execute(explain_sql)
+                log_query("explain_query", sql_query)
                 results = await cur.fetchone()
                 if results and 'QUERY PLAN' in results:
                     import json

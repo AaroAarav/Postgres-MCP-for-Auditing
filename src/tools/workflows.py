@@ -6,6 +6,7 @@ from src.db.connection import get_db_connection
 from src.tools.formatters import format_results
 from psycopg.rows import dict_row
 import logging
+from src.tools.history import log_query
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +62,7 @@ async def run_saved_query(query_name: str, params_json: str = "{}") -> str:
         async with get_db_connection() as conn:
             async with conn.cursor(row_factory=dict_row) as cur:
                 await cur.execute(sql, params_dict)
+                log_query(f"run_saved_query({query_name})", sql)
                 results = await cur.fetchall()
                 return format_results(results, f"No results for query '{query_name}'.")
     except Exception as e:
@@ -147,6 +149,7 @@ async def execute_dynamic_query(sql: str) -> str:
             await conn.set_read_only(True)
             async with conn.cursor(row_factory=dict_row) as cur:
                 await cur.execute(sql)
+                log_query("execute_dynamic_query", sql)
                 results = await cur.fetchall()
                 return format_results(results, "No results found for dynamic query.")
     except Exception as e:

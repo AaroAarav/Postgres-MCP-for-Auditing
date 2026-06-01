@@ -16,6 +16,7 @@ from src.config.settings import settings
 # Import isolated tool modules
 
 from src.tools.schema import get_database_schema
+from src.tools.history import get_recent_queries
 from src.tools.diagnostics import (
     ping_database, slow_queries, active_sessions, 
     cache_hit_rate, blocking_lock_tree, table_bloat_report,log_llm_usage, high_variance_queries, queries_by_io, temp_spill_queries, query_regression_report, explain_query, explain_summary, latency_percentiles
@@ -134,6 +135,8 @@ mcp.tool()(list_saved_workflows)
 mcp.tool()(run_workflow)
 mcp.tool()(execute_dynamic_query)
 mcp.tool()(save_query)
+mcp.tool()(get_recent_queries)
+
 
 
 # Register Maintenance Tools
