@@ -86,6 +86,13 @@ uv sync
 uv run pg-auditor --db "postgresql://user:pass@localhost:5432/mydb"
 ```
 
+### Testing
+You can easily verify that all diagnostic tools are fully functional and generalized against your database by running the automated testing script:
+```bash
+uv run python test_all_tools.py
+```
+This script programmatically executes all parameter-less read-only tools and guarantees there are no PostgreSQL syntax errors or execution crashes on your specific deployment.
+
 ---
 
 ## 🔌 Connecting to Claude Desktop

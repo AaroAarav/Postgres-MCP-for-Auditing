@@ -46,11 +46,34 @@ async def run_dba_agent(user_prompt: str):
                     }
                 })
 
-            # 2. Maintain conversational state
+            # 2. Pre-fetch Context
+            schema_res = await session.call_tool("get_database_schema", {})
+            schema_text = schema_res.content[0].text if schema_res.content else "Schema unavailable"
+            
+            saved_queries_res = await session.call_tool("list_saved_queries", {})
+            saved_queries_text = saved_queries_res.content[0].text if saved_queries_res.content else "No saved queries"
+
+            # 3. Maintain conversational state
+            sys_prompt = f"""You are an autonomous PostgreSQL Database Administrator. You have access to tools to diagnose and manage the database.
+
+### INITIAL CONTEXT ###
+Database Schema:
+{schema_text}
+
+Currently Saved Queries:
+{saved_queries_text}
+### END CONTEXT ###
+
+CRITICAL RULES:
+1. If the user's request matches the description of any Currently Saved Queries above, you MUST immediately call `run_saved_query` with that query name. Do NOT generate new SQL.
+2. If the user's request does NOT match any saved queries, write a custom query using `execute_dynamic_query`. Use the Database Schema above to ensure your SQL is correct. You MUST provide a descriptive `query_name` and `query_description` so the system can auto-save it for future use.
+3. In your final response, you MUST explicitly state whether you used a pre-saved query (and mention its name) OR if you generated and auto-saved a brand new custom query.
+4. After gathering enough information, provide a final, comprehensive response explaining your findings.
+"""
             messages = [
                 {
                     'role': 'system', 
-                    'content': 'You are an autonomous PostgreSQL Database Administrator. You have access to tools to diagnose and manage the database. You MUST use these tools to answer the user\'s request. After you have gathered enough information from the tools, you MUST ALWAYS provide a final, comprehensive response in natural language explaining your findings.'
+                    'content': sys_prompt
                 },
                 {'role': 'user', 'content': user_prompt}
             ]
@@ -81,11 +104,20 @@ async def run_dba_agent(user_prompt: str):
                 
                 # Fallback: Parse Markdown JSON if 3B parameter model outputs text instead of structured tools
                 if not tool_calls and response.message.content:
-                    # This new regex looks for ANY valid JSON object {} in the text, with or without markdown
-                    json_match = re.search(r'(\{[\s\S]*"(?:name|function)"\s*:\s*"[^"]+"[\s\S]*\})', response.message.content)
-                    if json_match:
+                    # Look for ALL valid JSON objects wrapped in markdown code blocks
+                    json_blocks = re.findall(r'```(?:json)?\s*(\{.*?\})\s*```', response.message.content, re.DOTALL)
+                    
+                    # If no markdown blocks, try a rough non-greedy match (which might fail on nested braces, but is a fallback)
+                    if not json_blocks:
+                        json_blocks = re.findall(r'(\{[\s\S]*?"(?:name|function)"\s*:\s*"[^"]+"[\s\S]*?\})', response.message.content)
+
+                    for block in json_blocks:
                         try:
-                            parsed_tool = json.loads(json_match.group(1))
+                            # Fix potentially truncated nested braces from rough regex
+                            if block.count('{') > block.count('}'):
+                                block += '}' * (block.count('{') - block.count('}'))
+                            
+                            parsed_tool = json.loads(block)
                             tool_name_extracted = parsed_tool.get("name") or parsed_tool.get("function")
                             if tool_name_extracted in available_tool_names:
                                 # Standardize into a pseudo-tool call structure
@@ -95,7 +127,7 @@ async def run_dba_agent(user_prompt: str):
                                             "name": name,
                                             "arguments": args
                                         })()
-                                tool_calls = [PseudoToolCall(tool_name_extracted, parsed_tool.get("arguments", {}))]
+                                tool_calls.append(PseudoToolCall(tool_name_extracted, parsed_tool.get("arguments", {})))
                         except Exception:
                             pass
 

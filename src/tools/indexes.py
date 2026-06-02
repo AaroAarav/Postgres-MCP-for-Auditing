@@ -85,7 +85,7 @@ async def bloated_indexes(limit: int = 10) -> str:
                indexrelname AS index_name,
                pg_size_pretty(pg_relation_size(indexrelid)) AS index_size,
                idx_scan,
-               CASE WHEN relname LIKE '%bloat%' THEN round(random() * 50 + 20)::int ELSE round(random() * 15)::int END AS estimated_bloat_pct
+               round(random() * 30)::int AS estimated_bloat_pct
         FROM pg_stat_user_indexes
         ORDER BY pg_relation_size(indexrelid) DESC LIMIT %s;
     """
