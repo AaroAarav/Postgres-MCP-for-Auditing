@@ -11,7 +11,7 @@ async def main():
     print("==================================================")
     print("TEST 1: Generate Query (Should use Schema Context & Auto-Save)")
     print("==================================================")
-    prompt = "Write a SQL query to find the names of all databases and their encoding from the pg_database table. Call it 'db_encodings'."
+    prompt = "Write a query to list all tables in the pg_stat_user_tables schema where the number of dead tuples (n_dead_tup) is greater than 100. Call this query 'tables_needing_vacuum'."
     await run_dba_agent(prompt)
     
     print("\n\n==================================================")

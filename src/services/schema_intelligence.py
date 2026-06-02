@@ -67,7 +67,7 @@ class QueryTemplateStore:
             """, (database_id, schema_hash, original_prompt, json.dumps(embedding), generated_sql, now, now))
             conn.commit()
 
-    def search_similar_query(self, database_id: str, prompt: str, schema_hash: str, threshold: float = 0.85) -> Optional[str]:
+    def search_similar_query(self, database_id: str, prompt: str, schema_hash: str, threshold: float = 0.60) -> Optional[str]:
         prompt_embedding = self.get_embedding(prompt)
         if not prompt_embedding:
             return None

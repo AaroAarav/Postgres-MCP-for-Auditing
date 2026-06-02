@@ -8,3 +8,18 @@
   description: Retrieves users and their respective durations from the mcp_audit_log
     where the duration is greater than 100ms.
   sql: SELECT db_user, duration_ms FROM mcp_audit_log WHERE duration_ms > 100;
+- name: audit_log_errors
+  description: Retrieves tool names and error messages from the mcp_audit_log where
+    the status is 'error'.
+  sql: SELECT tool_name, error_message FROM mcp_audit_log WHERE status = 'error'
+- name: count_mcp_audit_log_rows
+  description: Counts the total number of rows in the mcp_audit_log table.
+  sql: SELECT COUNT(*) FROM mcp_audit_log;
+- name: distinct_tool_names
+  description: Retrieves a list of distinct tool names from the mcp_audit_log table.
+  sql: SELECT DISTINCT tool_name FROM mcp_audit_log;
+- name: total_duration_per_db_user
+  description: This query calculates the total duration in milliseconds for each user
+    based on their entries in the mcp_audit_log table.
+  sql: SELECT db_user, SUM(duration_ms) AS total_duration_ms FROM mcp_audit_log GROUP
+    BY db_user;
