@@ -1,7 +1,10 @@
-- name: public_table_names
-  description: Lists all tables in the 'public' schema.
-  sql: SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'
-- name: active_usernames
-  description: Lists all active user names from the pg_stat_activity view.
-  sql: SELECT usename FROM pg_stat_activity WHERE pid != pg_backend_pid() AND state
-    = 'active';
+- name: top_5_slowest_queries
+  description: Returns the top 5 slowest queries based on their execution time.
+  sql: SELECT * FROM mcp_audit_log ORDER BY duration_ms DESC LIMIT 5;
+- name: get_top_5_largest_table_rows
+  description: Retrieves the top 5 rows from the largest table based on size.
+  sql: SELECT * FROM mcp_audit_log ORDER BY id DESC LIMIT 5;
+- name: audit_log_high_duration
+  description: Retrieves users and their respective durations from the mcp_audit_log
+    where the duration is greater than 100ms.
+  sql: SELECT db_user, duration_ms FROM mcp_audit_log WHERE duration_ms > 100;

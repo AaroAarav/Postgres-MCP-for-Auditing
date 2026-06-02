@@ -32,11 +32,13 @@ This server exposes a powerful suite of database administration and auditing too
 - **index_usage_stats**: Get detailed read/hit statistics per index.
 - **index_health_summary**: Provides a rolled-up schema score summarizing index health.
 
-### 🧠 Dynamic Analysis & Workflows
-- **get_database_schema**: Allows the LLM to learn the database structure (tables, columns, types, constraints).
-- **execute_dynamic_query**: Allows the LLM to run custom, generated SQL (safely restricted to read-only `SELECT` statements).
-- **save_query**: The LLM can permanently cache successful queries to `saved_queries.yaml` for zero-shot future use.
-- **list_saved_queries / run_saved_query**: Re-use parameterized queries to drastically cut down on token costs and hallucinations.
+### 🧠 Schema-Aware Query Intelligence Layer & Workflows
+- **smart_query (Semantic Cache)**: A semantic memory layer! When you ask a question about your data, the agent checks a persistent SQLite cache (`query_memory.db`) for semantically similar, previously executed queries using local embeddings.
+- **Zero-Shot Query Reuse**: If a semantic match is found (e.g., "top 10 users" vs "best 10 customers"), it completely skips schema fetching and SQL generation, instantly executing the cached query to save massive amounts of LLM tokens and time.
+- **Schema Safety Validation**: Automatically validates the cached query against the live database schema hash before executing, ensuring no stale SQL is run against a modified database.
+- **get_database_schema**: Allows the LLM to learn the live database structure (tables, columns, types, constraints), backed by an intelligent TTL cache.
+- **execute_dynamic_query**: Allows the LLM to run custom, generated SQL (safely restricted to read-only `SELECT` statements). Successful queries are automatically saved to the semantic cache!
+- **save_query / run_saved_query**: Statically save and re-use parameterized queries via `saved_queries.yaml` for deterministic reporting.
 - **list_saved_workflows / run_workflow**: Chain multiple diagnostics tools into a single, automated server-side report (e.g., `weekly_health_review`).
 
 ### 🛠️ Maintenance & Safety

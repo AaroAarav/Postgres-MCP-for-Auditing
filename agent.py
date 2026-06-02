@@ -46,10 +46,7 @@ async def run_dba_agent(user_prompt: str):
                     }
                 })
 
-            # 2. Pre-fetch Context
-            schema_res = await session.call_tool("get_database_schema", {})
-            schema_text = schema_res.content[0].text if schema_res.content else "Schema unavailable"
-            
+            # 2. Pre-fetch Only Saved Queries (Remove massive schema to save tokens)
             saved_queries_res = await session.call_tool("list_saved_queries", {})
             saved_queries_text = saved_queries_res.content[0].text if saved_queries_res.content else "No saved queries"
 
@@ -57,18 +54,18 @@ async def run_dba_agent(user_prompt: str):
             sys_prompt = f"""You are an autonomous PostgreSQL Database Administrator. You have access to tools to diagnose and manage the database.
 
 ### INITIAL CONTEXT ###
-Database Schema:
-{schema_text}
-
-Currently Saved Queries:
+Currently Saved Queries (These are NOT tools. To use them, you MUST call the `run_saved_query` tool and pass the name as the `query_name` parameter):
 {saved_queries_text}
 ### END CONTEXT ###
 
 CRITICAL RULES:
-1. If the user's request matches the description of any Currently Saved Queries above, you MUST immediately call `run_saved_query` with that query name. Do NOT generate new SQL.
-2. If the user's request does NOT match any saved queries, write a custom query using `execute_dynamic_query`. Use the Database Schema above to ensure your SQL is correct. You MUST provide a descriptive `query_name` and `query_description` so the system can auto-save it for future use.
-3. In your final response, you MUST explicitly state whether you used a pre-saved query (and mention its name) OR if you generated and auto-saved a brand new custom query.
-4. After gathering enough information, provide a final, comprehensive response explaining your findings.
+1. OVERRIDE: Even if the user asks you to "write a custom query", if their request matches any of the 'Currently Saved Queries', you MUST IGNORE their request to write a new one and immediately call `run_saved_query`. NEVER generate new SQL if it is already saved.
+2. If the user's request requires querying data, you MUST call the `smart_query` tool FIRST. This tool will search for previously executed, semantically similar queries to save tokens.
+3. If `smart_query` returns a Cache Hit and successfully executes, you are done. Stop calling tools and provide the final response.
+4. If `smart_query` returns a Cache Miss, you MUST call the `get_database_schema` tool FIRST to learn the structure of the database. Do NOT guess column names (especially for JSONB fields like `parameters` in `mcp_audit_log`).
+5. After retrieving the schema, write a custom query using `execute_dynamic_query`. You MUST provide the original `user_prompt`, a descriptive `query_name`, and `query_description`.
+6. If a tool returns an "ACTION BLOCKED" message instructing you to use `run_saved_query`, you MUST call `run_saved_query` and NEVER attempt to call `execute_dynamic_query` again.
+7. CRITICAL: Once you receive tabular data from ANY tool (like `run_saved_query` or `execute_dynamic_query`), you are completely DONE gathering data. You MUST IMMEDIATELY STOP calling tools and output your final plain-text response to the user. Do not call any more tools.
 """
             messages = [
                 {
@@ -87,7 +84,7 @@ CRITICAL RULES:
                 print(f"🧠 Thinking (Turn {turn + 1})...")
                 
                 response = await client.chat(
-                    model='qwen2.5-coder:3b',
+                    model='qwen2.5-coder:7b',
                     messages=messages,
                     tools=ollama_tools,
                 )

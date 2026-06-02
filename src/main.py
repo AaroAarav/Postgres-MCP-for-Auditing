@@ -25,6 +25,8 @@ from src.db.audit import log_llm_usage
 from src.tools.workflows import (
     list_saved_queries, run_saved_query, list_saved_workflows, run_workflow, execute_dynamic_query, save_query
 )
+from src.tools.smart_query import smart_query
+from src.services.schema_intelligence import schema_manager
 from src.tools.indexes import (
     missing_index_candidates, unused_indexes, duplicate_indexes, suggest_indexes, bloated_indexes, unindexed_foreign_keys, index_usage_stats, index_health_summary
 )
@@ -81,6 +83,14 @@ async def server_lifespan(server: FastMCP):
                 else:
                     logger.info(f"✅ User '{user_info[0]}' has sufficient privileges.")
                     
+        # 4. Pre-warm Schema Cache
+        try:
+            logger.info("Fetching and caching database schema...")
+            await schema_manager.fetch_schema(force_refresh=True)
+            logger.info("✅ Schema Intelligence Layer ready.")
+        except Exception as e:
+            logger.warning(f"⚠️ Failed to pre-warm schema cache: {e}")
+            
     except psycopg.OperationalError as e:
         logger.error(f"🚨 CRITICAL: Database connection failed during startup: {e}")
     except Exception as e:
@@ -133,6 +143,7 @@ mcp.tool()(list_saved_queries)
 mcp.tool()(run_saved_query)
 mcp.tool()(list_saved_workflows)
 mcp.tool()(run_workflow)
+mcp.tool()(smart_query)
 mcp.tool()(execute_dynamic_query)
 mcp.tool()(save_query)
 mcp.tool()(get_recent_queries)
